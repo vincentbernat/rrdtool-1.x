@@ -879,7 +879,7 @@ int data_fetch(
                 if (status == 0)
                 {
                     status = rrdc_flush (im->gdes[i].rrd);
-                    if (status != 0)
+                    if (status != 0 && !(im->extra_flags & ALLOW_MISSING_DS))
                     {
                         rrd_set_error ("rrdc_flush (%s) failed with status %i.",
                                 im->gdes[i].rrd, status);
@@ -896,7 +896,12 @@ int data_fetch(
                               &im->gdes[i].ds_cnt,
                               &im->gdes[i].ds_namv,
                               &im->gdes[i].data)) == -1) {
-                return -1;
+                    if (im->extra_flags & ALLOW_MISSING_DS) {
+                        /* Unable to fetch data, assume fake data */
+                        rrd_clear_error();
+                        im->gdes[i].ds_cnt = im->gdes[i].start = im->gdes[i].end = 0;
+                        ft_step = 1;
+                    } else return -1;
             }
             im->gdes[i].data_first = 1;
 
@@ -922,7 +927,8 @@ int data_fetch(
                 im->gdes[i].ds = ii;
             }
         }
-        if (im->gdes[i].ds == -1) {
+        if ((im->gdes[i].ds == -1) &&
+            !(im->extra_flags & ALLOW_MISSING_DS)) {
             rrd_set_error("No DS called '%s' in '%s'",
                           im->gdes[i].ds_nam, im->gdes[i].rrd);
             return -1;
@@ -4237,6 +4243,7 @@ void rrd_graph_options(
         { "alt-y-grid",         no_argument,       0, 'Y'},
         { "y-grid",             required_argument, 0, 'y'},
         { "lazy",               no_argument,       0, 'z'},
+        { "missing-ds",         no_argument,       0, 'Z'},
         { "units",              required_argument, 0, LONGOPT_UNITS_SI},
         { "alt-y-mrtg",         no_argument,       0, 1000},    /* this has no effect it is just here to save old apps from crashing when they use it */
         { "disable-rrdtool-tag",no_argument,       0, 1001},
@@ -4262,7 +4269,7 @@ void rrd_graph_options(
         int       col_start, col_end;
 
         opt = getopt_long(argc, argv,
-                          "Aa:B:b:c:Dd:Ee:Ff:G:gh:IiJjL:l:Mm:Nn:oPR:rS:s:T:t:u:v:W:w:X:x:Yy:z",
+                          "Aa:B:b:c:Dd:Ee:Ff:G:gh:IiJjL:l:Mm:Nn:oPR:rS:s:T:t:u:v:W:w:X:x:Yy:Zz",
                           long_options, &option_index);
         if (opt == EOF)
             break;
@@ -4287,6 +4294,9 @@ void rrd_graph_options(
             break;
         case 'g':
             im->extra_flags |= NOLEGEND;
+            break;
+        case 'Z':
+            im->extra_flags |= ALLOW_MISSING_DS;
             break;
         case 1005:
             if (strcmp(optarg, "north") == 0) {

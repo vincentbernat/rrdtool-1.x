@@ -45,6 +45,7 @@
 
 #define FULL_SIZE_MODE     0x200    /* -width and -height indicate the total size of the image */
 #define NO_RRDTOOL_TAG 0x400  /* disable the rrdtool tag */
+#define ALLOW_MISSING_DS 0x800  /* missing DS is not fatal */
 
 enum tmt_en { TMT_SECOND = 0, TMT_MINUTE, TMT_HOUR, TMT_DAY,
     TMT_WEEK, TMT_MONTH, TMT_YEAR
